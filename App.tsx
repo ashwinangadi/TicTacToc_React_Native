@@ -1,118 +1,179 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
 import {
+  FlatList,
+  Image,
+  Pressable,
   SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
-  useColorScheme,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import React, {useRef, useState} from 'react';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const data = ['tl', 'tc', 'tr', 'cl', 'c', 'cr', 'bl', 'bc', 'br'];
+const conditions = [
+  ['tl', 'tc', 'tr'],
+  ['cl', 'c', 'cr'],
+  ['bl', 'bc', 'br'],
+  ['tl', 'cl', 'bl'],
+  ['tc', 'c', 'bc'],
+  ['tr', 'cr', 'br'],
+  ['tl', 'c', 'br'],
+  ['bl', 'c', 'tr'],
+];
+let visited = new Map();
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const App = () => {
+  const [Player, setPlayer] = useState({
+    oPlayer: true,
+    xPlayer: false,
+  });
+  const [playerWon, setPlayerWon] = useState(false);
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  const oPlayerPosition = useRef([]);
+  const xPlayerPosition = useRef([]);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const resetGame = () => {
+    visited = new Map();
+    setPlayer({oPlayer: !Player.oPlayer, xPlayer: !Player.xPlayer});
+    oPlayerPosition.current = [];
+    xPlayerPosition.current = [];
+    setPlayerWon(false);
+  };
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  function findWinner() {
+    conditions.forEach(condition => {
+      if (
+        (oPlayerPosition.current.includes(condition[0]) &&
+          oPlayerPosition.current.includes(condition[1]) &&
+          oPlayerPosition.current.includes(condition[2])) ||
+        (xPlayerPosition.current.includes(condition[0]) &&
+          xPlayerPosition.current.includes(condition[1]) &&
+          xPlayerPosition.current.includes(condition[2]))
+      ) {
+        setPlayerWon(true);
+      }
+    });
+  }
+
+  const gameLogic = tappedItem => {
+    const currentPlayer = Player.oPlayer ? 'O' : 'X';
+    currentPlayer === 'O'
+      ? (oPlayerPosition.current = [...oPlayerPosition.current, tappedItem])
+      : (xPlayerPosition.current = [...xPlayerPosition.current, tappedItem]);
+
+    setPlayer({oPlayer: !Player.oPlayer, xPlayer: !Player.xPlayer});
+
+    if (!visited.has(tappedItem)) {
+      visited.set(tappedItem, currentPlayer);
+    }
+
+    findWinner();
+
+    // console.log(oPlayerPosition.current[2]);
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.playerTurn}>
+        <Text style={styles.turnText}>
+          {Player.oPlayer ? <Text>O</Text> : <Text>X</Text>}
+          's Turn
+        </Text>
+        {playerWon && (
+          <Text style={styles.result}>
+            {Player.oPlayer ? <Text>X</Text> : <Text>O</Text>} Won
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.gameContainer}>
+        <FlatList
+          data={data}
+          renderItem={item => (
+            <View style={styles.gameItems}>
+              <Pressable
+                onPress={() => gameLogic(item.item)}
+                disabled={visited.has(item.item) || playerWon}
+                // activeOpacity={playerWon ? 1 : 0}
+                style={styles.resetButton}>
+                {visited.has(item.item) ? (
+                  <Text style={styles.XOtext}>{visited.get(item.item)}</Text>
+                ) : (
+                  <Image
+                    source={require('./assets/question.png')}
+                    style={{width: 25, height: 40}}
+                  />
+                )}
+              </Pressable>
+            </View>
+          )}
+          keyExtractor={data => data}
+          numColumns={3}
+        />
+      </View>
+
+      <TouchableOpacity onPress={resetGame} style={styles.resetButton}>
+        <Text style={styles.resetText}>Reload Game</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
-}
+};
+
+export default App;
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  screen: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 50,
+    marginBottom: 300,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  playerTurn: {
+    paddingHorizontal: 50,
+    paddingVertical: 10,
+    backgroundColor: 'gray',
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  gameContainer: {
+    // position: 'relative',
+    width: '100%',
+    height: '200',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  highlight: {
+  result: {
+    position: 'absolute',
+    fontSize: 50,
+    fontWeight: '800',
+    borderWidth: 5,
+    borderColor: 'gray',
+    backgroundColor: 'black',
+    padding: 20,
+    textAlign: 'center',
+  },
+  gameItems: {
+    margin: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: 80,
+  },
+  turnText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: 'white',
+  },
+  resetButton: {},
+  resetText: {
+    paddingHorizontal: 50,
+    paddingVertical: 10,
+    backgroundColor: 'gray',
+    color: 'white',
+    fontSize: 20,
+  },
+  XOtext: {
+    fontSize: 40,
     fontWeight: '700',
   },
 });
-
-export default App;
